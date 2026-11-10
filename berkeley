@@ -1,0 +1,48 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+
+#define NUM_CLIENTES 3
+#define UMBRAL_TOLERANCIA 10 // Máximo desfasaje permitido (en segundos)
+
+void algoritmo_berkeley(int tiempo_maestro, int tiempos_clientes[NUM_CLIENTES]) {
+    int diferencias[NUM_CLIENTES + 1];
+    int acumulador_diferencias = 0;
+    int conteo_validos = 1; // El maestro cuenta como válido de inicio
+
+    diferencias[0] = 0; // Diferencia del maestro consigo mismo
+
+    printf("--- Tiempos iniciales detectados ---\n");
+    printf("Maestro   : %d s\n", tiempo_maestro);
+    for (int i = 0; i < NUM_CLIENTES; i++) {
+        printf("Cliente %d : %d s\n", i + 1, tiempos_clientes[i]);
+    }
+
+    // 1. Obtener la diferencia de tiempo respecto al maestro
+    for (int i = 0; i < NUM_CLIENTES; i++) {
+        diferencias[i + 1] = tiempos_clientes[i] - tiempo_maestro;
+    }
+
+    // 2. Descartar diferencias anómalas (fuera del umbral) y sumar las válidas
+    for (int i = 1; i <= NUM_CLIENTES; i++) {
+        if (abs(diferencias[i]) <= UMBRAL_TOLERANCIA) {
+            acumulador_diferencias += diferencias[i];
+            conteo_validos++;
+        } else {
+            printf("\n[Alerta] Cliente %d ignorado por desfasaje extremo (%+d s)\n", 
+                   i, diferencias[i]);
+        }
+    }
+
+    // 3. Calcular la diferencia promedio ajustada
+    int tiempo_promedio_desfase = acumulador_diferencias / conteo_validos;
+    int tiempo_sincronizado = tiempo_maestro + tiempo_promedio_desfase;
+
+    printf("\n--- Resultados de la Sincronización ---\n");
+    printf("Tiempo objetivo sincronizado : %d s\n", tiempo_sincronizado);
+    printf("Ajuste aplicado al Maestro   : %+d s\n", tiempo_promedio_desfase);
+
+    // 4. Enviar los deltas de corrección a los clientes válidos
+    for (int i = 0; i < NUM_CLIENTES; i++) {
+        int ajuste_cliente = tiempo_sincronizado - tiempos_clientes[i];
+        printf("Ajuste para Cliente %d         : %+d s\n", i + 1, ajuste_cliente);
