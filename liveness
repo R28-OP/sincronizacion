@@ -1,0 +1,74 @@
+#include <stdio.h>
+#include <pthread.h>
+#include <stdbool.h>
+#include <unistd.h>
+
+#define N 5 // Número de hilos
+
+bool eligiendo[N] = {false};
+int numero[N] = {0};
+
+int obtener_maximo() {
+    int max = 0;
+    for (int i = 0; i < N; i++) {
+        if (numero[i] > max) {
+            max = numero[i];
+        }
+    }
+    return max;
+}
+
+void entrar_seccion_critica(int i) {
+    // 1. Tomar turno
+    eligiendo[i] = true;
+    numero[i] = obtener_maximo() + 1;
+    eligiendo[i] = false;
+
+    // 2. Esperar turno
+    for (int j = 0; j < N; j++) {
+        if (j == i) continue;
+
+        // Esperar si el hilo 'j' está eligiendo número
+        while (eligiendo[j]);
+
+        // Esperar si 'j' tiene prioridad (número menor o igual si j < i)
+        while (numero[j] != 0 && 
+              (numero[j] < numero[i] || (numero[j] == numero[i] && j < i)));
+    }
+}
+
+void salir_seccion_critica(int i) {
+    numero[i] = 0; // Liberar turno
+}
+
+void* proceso(void* arg) {
+    int id = *(int*)arg;
+
+    entrar_seccion_critica(id);
+    
+    // --- Sección Crítica ---
+    printf("Hilo %d entró a la Sección Crítica (Turno: %d)\n", id, numero[id]);
+    usleep(500000);
+    printf("Hilo %d saliendo de la Sección Crítica\n", id);
+    // ----------------------
+
+    salir_seccion_critica(id);
+
+    return NULL;
+}
+
+int main() {
+    pthread_t hilos[N];
+    int ids[N];
+
+    for (int i = 0; i < N; i++) {
+        ids[i] = i;
+        pthread_create(&hilos[i], NULL, proceso, &ids[i]);
+    }
+
+    for (int i = 0; i < N; i++) {
+        pthread_join(hilos[i], NULL);
+    }
+
+    return 0;
+}
